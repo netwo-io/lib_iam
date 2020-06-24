@@ -1,0 +1,9 @@
+== Agnostic Identity and Access Management (IAM) library for PostgreSQL (PL/pgSQL)
+
+=== Features
+=== Usage
+=== API
+
+=== SQL Conventions
+
+Code is written https://github.com/fgribreau/sql-convention/[following standard SQL-convention].
