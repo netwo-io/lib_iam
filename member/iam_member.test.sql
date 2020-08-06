@@ -109,3 +109,104 @@ begin
   perform lib_test.assert_equal(user$.password, lib_iam.check_pass('new_password', user$.password));
 end;
 $$ language plpgsql;
+
+-- Auth token management.
+
+create or replace function lib_test.test_case_lib_iam_one_time_token_not_generated_for_unknown_user() returns void as $$
+declare
+  member__id$ uuid;
+begin
+
+  begin
+    member__id$ = '081d831f-8f88-0000-aaaa-000000000001';
+    perform lib_iam.generate_auth_token(member__id$);
+  exception
+    when check_violation then return;
+  end;
+  perform lib_test.fail('A token should not be created for an inexistent user.');
+end;
+$$ language plpgsql;
+
+create or replace function lib_test.test_case_lib_iam_one_time_token_not_generated_for_blocked_user() returns void as $$
+declare
+  member__id$ uuid;
+begin
+
+  begin
+    member__id$ = lib_iam.user_create('password');
+    perform lib_iam.user_delete(member__id$);
+    perform lib_iam.generate_auth_token(member__id$);
+  exception
+    when check_violation then return;
+  end;
+  perform lib_test.fail('A token should not be created for a restricted user.');
+end;
+$$ language plpgsql;
+
+create or replace function lib_test.test_case_lib_iam_user_cannot_be_recognized_without_valid_one_time_token() returns void as $$
+declare
+  lifetime$   integer;
+  member__id$ uuid;
+  token$      text;
+begin
+  begin
+    member__id$ = lib_iam.user_create('password');
+    token$ = lib_pgjwt.url_encode(convert_to('notReallyAToken', 'utf8'));
+    perform lib_iam.verify_auth_token(token$);
+  exception
+    when sqlstate '28000' then return;
+  end;
+  perform lib_test.fail('');
+end;
+$$ language plpgsql;
+
+create or replace function lib_test.test_case_lib_iam_user_cannot_be_recognized_with_expired_one_time_token() returns void as $$
+declare
+  lifetime$   integer;
+  member__id$ uuid;
+  token$      text;
+begin
+
+  begin
+    lifetime$ = lib_settings.get('lib_iam_one_time_token_lifetime')::integer;
+    member__id$ = lib_iam.user_create('password');
+    perform lib_settings.set('lib_iam_one_time_token_lifetime', '-1');
+    token$ = lib_iam.generate_auth_token(member__id$);
+    perform lib_iam.verify_auth_token(token$);
+  exception
+    when check_violation then
+      perform lib_settings.set('lib_iam_one_time_token_lifetime', lifetime$::text);
+      return;
+  end;
+  perform lib_settings.set('lib_iam_one_time_token_lifetime', lifetime$::text);
+  perform lib_test.fail('An expired token should not recognize his user.');
+end;
+$$ language plpgsql;
+
+create or replace function lib_test.test_case_lib_iam_user_can_be_recognized_with_valid_one_time_token() returns void as $$
+declare
+  member__id$ uuid;
+  token$      text;
+begin
+  member__id$ = lib_iam.user_create('password');
+  token$ = lib_iam.generate_auth_token(member__id$);
+  perform lib_test.assert_equal(lib_iam.verify_auth_token(token$), member__id$);
+end;
+$$ language plpgsql;
+
+create or replace function lib_test.test_case_lib_iam_user_cannot_be_recognized_with_used_one_time_token() returns void as $$
+declare
+  member__id$ uuid;
+  token$      text;
+begin
+  member__id$ = lib_iam.user_create('password');
+  token$ = lib_iam.generate_auth_token(member__id$);
+  perform lib_test.assert_equal(lib_iam.verify_auth_token(token$), member__id$);
+  begin
+    perform lib_test.assert_equal(lib_iam.verify_auth_token(token$), member__id$);
+  exception
+    when check_violation then return;
+  end;
+  perform lib_test.fail('An already used token should not recognize his user.');
+end;
+$$ language plpgsql;

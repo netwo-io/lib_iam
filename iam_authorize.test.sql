@@ -1,7 +1,6 @@
 -- lib iam functions tests.
 
 create or replace function lib_test.test_case_lib_iam_functions_raise_w_wrong_permission_format() returns void as $$
-declare
 begin
 
   begin
@@ -14,7 +13,6 @@ end;
 $$ language plpgsql;
 
 create or replace function lib_test.test_case_lib_iam_functions_raise_w_wrong_resource_format() returns void as $$
-declare
 begin
 
   begin
@@ -27,7 +25,6 @@ end;
 $$ language plpgsql;
 
 create or replace function lib_test.test_case_lib_iam_functions_raise_w_wrong_principal_format() returns void as $$
-declare
 begin
 
   begin
