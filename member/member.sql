@@ -13,7 +13,7 @@ create table lib_iam.service_account
 
 create table lib_iam.user
 (
-  password text not null,
+  password varchar(64) not null,
   is_login_restricted boolean not null default false,
   user_secret uuid,
   -- status uuid not null references lib_fsm.state_machine(state_machine__id) on delete restrict on update restrict,
