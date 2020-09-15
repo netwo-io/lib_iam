@@ -104,22 +104,25 @@ begin
 end;
 $$ security definer language plpgsql;
 
-create or replace function lib_iam.user_change_password(member__id$ uuid, new$ text, old$ text) returns void as
+create or replace function lib_iam.user_change_password(token$ text, new$ text) returns uuid as
 $$
 declare
-  usr$ lib_iam.user;
+  member__id$ uuid;
+  usr$        lib_iam.user;
 begin
 
+  member__id$ = lib_iam.verify_auth_token(token$);
   select member__id from lib_iam.user
-    where member__id = member__id$ and password = lib_iam.check_pass(old$, password)
+    where member__id = member__id$
     into usr$;
 
   if not found then
-    raise 'invalid password_old' using errcode = 'check_violation';
+    raise 'not_found' using errcode = 'check_violation';
   end if;
 
   perform lib_iam.check_password_validity(new$);
   update lib_iam.user set password = lib_iam.encrypt_pass(new$) where member__id = usr$.member__id;
+  return member__id$;
 end;
 $$ security definer language plpgsql;
 
@@ -163,7 +166,7 @@ $$ security definer language plpgsql;
 
 -- Auth token management.
 
-create or replace function lib_iam.generate_auth_token(member__id$ uuid) returns text as $$
+create or replace function lib_iam.generate_auth_token(member__id$ uuid, identifier$ text, lifetime$ integer) returns text as $$
 declare
   usr$         lib_iam.user;
   user_secret$ uuid;
@@ -188,7 +191,8 @@ begin
       lib_pgjwt.sign(
         json_build_object(
           'sub', member__id$::uuid,
-          'exp', extract(epoch from now())::integer + lib_settings.get('lib_iam_one_time_token_lifetime')::integer
+          'exp', extract(epoch from now())::integer + lifetime$,
+          'identifier', identifier$
         ),
         user_secret$::text
       ),

@@ -33,7 +33,9 @@ begin
   begin
     perform lib_iam.organization_policy_add_binding('00000000-0000-0000-0000-0000000000d1'::uuid, 'test_manager', 'viewer', 'allusers');
   exception
-    when check_violation then return;
+    when check_violation then
+      perform lib_test.assert_equal(sqlerrm, 'principal must be one of allUsers, allAuthenticatedUsers, member_type:id');
+      return;
   end;
   perform lib_test.fail('Policy binding should not be created with invalid principal.');
 end;
@@ -47,7 +49,9 @@ begin
   begin
     perform lib_iam.organization_policy_add_binding('00000000-0000-0000-0000-0000000000d1'::uuid, 'test_manager', 'viewer', 'user:abcdefaa-0000-0000-0000-0000000000e1');
   exception
-    when foreign_key_violation then return;
+    when foreign_key_violation then
+      perform lib_test.assert_equal(sqlerrm, 'insert or update on table "user_organization_policy_binding" violates foreign key constraint "user_organization_policy_binding_member__id_fkey"');
+      return;
   end;
   perform lib_test.fail('Policy binding should not be created with unknown principal.');
 end;
@@ -125,7 +129,9 @@ begin
   begin
     perform lib_iam.organization_policy_remove_binding('00000000-0000-0000-0000-0000000000d4'::uuid, 'test_manager', 'viewer', 'aaaa');
   exception
-    when check_violation then return;
+    when check_violation then
+      perform lib_test.assert_equal(sqlerrm, 'value for domain lib_iam.principal violates check constraint "principal_check"');
+      return;
   end;
   perform lib_test.fail('Policy unbinding should raise with invalid principal');
 end;

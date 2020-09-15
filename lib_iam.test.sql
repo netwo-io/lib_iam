@@ -39,7 +39,9 @@ begin
   begin
     delete from lib_iam.verb where 1=1;
   exception
-    when foreign_key_violation then return;
+    when foreign_key_violation then
+      perform lib_test.assert_equal(sqlerrm, 'update or delete on table "verb" violates foreign key constraint "permission_verb__id_fkey" on table "permission"');
+      return;
   end;
   perform lib_test.fail('Verb in usage should not be deletable');
 end;
@@ -67,7 +69,9 @@ begin
     begin
         select lib_iam._parse_permission('a.b.c.d') into permission$;
     exception
-        when check_violation then return;
+        when check_violation then
+          perform lib_test.assert_equal(sqlerrm, 'value for domain lib_iam.permission_name violates check constraint "permission_name_check"');
+          return;
     end;
 end;
 $$ language plpgsql;

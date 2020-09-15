@@ -6,7 +6,9 @@ begin
   begin
     perform lib_iam.authorize('test_manager:invoice_get'::text, 'user:00000000-0000-0000-0000-0000000000e1'::text, 'organization:00000000-0000-0000-0000-0000000000a3', true);
   exception
-    when check_violation then return;
+    when check_violation then
+      perform lib_test.assert_equal(sqlerrm, 'value for domain lib_iam.permission_name violates check constraint "permission_name_check"');
+      return;
   end;
   perform lib_test.fail('Authorize should raise on unsupported permission serial.');
 end;
@@ -18,7 +20,9 @@ begin
   begin
     perform lib_iam.authorize('test_manager:invoice:get'::text, 'user:00000000-0000-0000-0000-0000000000e1'::text, 'toto:00000000-0000-0000-0000-0000000000a3', true);
   exception
-    when check_violation then return;
+    when check_violation then
+      perform lib_test.assert_equal(sqlerrm, 'value for domain lib_iam.resource_name violates check constraint "resource_name_check"');
+      return;
   end;
   perform lib_test.fail('Authorize should raise on unsupported resource serial.');
 end;
@@ -30,7 +34,9 @@ begin
   begin
     perform lib_iam.authorize('test_manager:invoice:create', 'useR:00000000-0000-0000-0000-00000000ffe1', 'organization:00000000-0000-0000-0000-0000000000a3', true);
   exception
-    when check_violation then return;
+    when check_violation then
+      perform lib_test.assert_equal(sqlerrm, 'principal must be one of allUsers, allAuthenticatedUsers, member_type:id');
+      return;
   end;
   perform lib_test.fail('Authorize should raise on unsupported permission serial.');
 end;

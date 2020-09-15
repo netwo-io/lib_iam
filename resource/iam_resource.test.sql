@@ -27,7 +27,9 @@ begin
   begin
     perform lib_iam.organization_create('my-org-name', 'my org description', '603c3f8b-17a9-4cb6-aaaa-000000000abc'::uuid);
   exception
-    when foreign_key_violation then return;
+    when foreign_key_violation then
+      perform lib_test.assert_equal(sqlerrm, 'insert or update on table "organization" violates foreign key constraint "organization_parent_organization__id_fkey"');
+      return;
   end;
   perform lib_test.fail('Organization parent must be an organization or void');
 end;
@@ -67,7 +69,9 @@ begin
   begin
     perform lib_iam.folder_create('my-folder-name', 'my folder description');
   exception
-    when check_violation then return;
+    when check_violation then
+      perform lib_test.assert_equal(sqlerrm, 'new row for relation "folder" violates check constraint "folder_must_have_only_one_parent"');
+      return;
   end;
   perform lib_test.fail('Folder should require a parent folder or organization');
 end;
@@ -120,7 +124,7 @@ $$ language plpgsql;
 
 ---------------- RESOURCE ------------------
 
-create or replace function lib_test.test_case_lib_iam_resource_cannot_create_resource_with_invalid_type() returns void as $$
+create or replace function lib_test.test_case_lib_iam_resource_cannot_create_resource_w_invalid_type() returns void as $$
 declare
   organization__id$ uuid;
   organization$     jsonb;
@@ -129,13 +133,15 @@ begin
   begin
     perform lib_iam.resource_create('my-resource-name', '00000000-0000-0000-0000-0000000000b1'::uuid, 'unknown_service', 'unknown_type');
   exception
-    when foreign_key_violation then return;
+    when foreign_key_violation then
+      perform lib_test.assert_equal(sqlerrm, 'insert or update on table "resource" violates foreign key constraint "resource_service__id_type__id_fkey"');
+      return;
   end;
   perform lib_test.fail('Resource creation should require an existing type');
 end;
 $$ language plpgsql;
 
-create or replace function lib_test.test_case_lib_iam_resource_cannot_create_resource_with_invalid_parent() returns void as $$
+create or replace function lib_test.test_case_lib_iam_resource_cannot_create_resource_w_invalid_parent() returns void as $$
 declare
   organization__id$ uuid;
   organization$     jsonb;
@@ -144,7 +150,9 @@ begin
   begin
     perform lib_iam.resource_create('my-resource-name', '00000000-0000-0000-0000-0000000000a1'::uuid, 'test_manager', 'invoice');
   exception
-    when foreign_key_violation then return;
+    when foreign_key_violation then
+      perform lib_test.assert_equal(sqlerrm, 'insert or update on table "resource" violates foreign key constraint "resource_parent_folder__id_fkey"');
+      return;
   end;
   perform lib_test.fail('Resource creation should require an existing parent folder');
 end;
