@@ -20,14 +20,12 @@ create table lib_iam.user
   primary key (member__id) -- table inheritance only copy table structure we need to also specify again constraints
 ) inherits (lib_iam.member);
 
-create or replace function lib_iam.user_create(password$ text) returns uuid as
+create or replace function lib_iam.user_create(password$ text, member__id$ uuid default public.gen_random_uuid()) returns uuid as
 $$
-declare
-  member__id$ uuid;
 begin
 
   perform lib_iam.check_password_validity(password$);
-  insert into lib_iam.user (member__id, password) values (default, password$) returning member__id into member__id$;
+  insert into lib_iam.user (member__id, password) values (member__id$, password$);
   return member__id$;
 end;
 $$ language plpgsql;

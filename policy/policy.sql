@@ -92,12 +92,10 @@ $$ immutable language plpgsql;
 
 ------------------ API ------------------
 
-create or replace function lib_iam.organization_policy_create(organization__id$ uuid) returns uuid as
+create or replace function lib_iam.organization_policy_create(organization__id$ uuid, policy__id$ uuid default public.gen_random_uuid()) returns uuid as
 $$
-declare
-  policy__id$ uuid;
 begin
-  insert into lib_iam.organization_policy (organization__id) values (organization__id$) returning policy__id into policy__id$;
+  insert into lib_iam.organization_policy (policy__id, organization__id) values (policy__id$, organization__id$);
   return policy__id$;
 end;
 $$ language plpgsql;
