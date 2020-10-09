@@ -11,7 +11,7 @@ create domain lib_iam.wildcardable_identifier as varchar(63)
 drop domain if exists lib_iam.description;
 create domain lib_iam.description as text
   not null
-  check (length(trim(value)) > 3);
+  check (length(trim(value)) > 2);
 
 drop domain if exists lib_iam.title;
 create domain lib_iam.title as lib_iam.description;
