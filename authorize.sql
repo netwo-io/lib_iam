@@ -75,45 +75,54 @@ begin
 end;
 $$ immutable language plpgsql;
 
+-- @deprecated
 create or replace function lib_iam.authorize(
   permission$       lib_iam.permission_name,
   principal$        lib_iam.principal,
   resource$         lib_iam.resource_name,
   dry_run$          bool default false
 ) returns boolean as $$
+begin
+  return lib_iam.authorize(lib_iam._parse_permission(permission$), principal$, lib_iam._parse_resource(resource$), dry_run$);
+end;
+$$ volatile security definer language plpgsql;
+
+create or replace function lib_iam.authorize(
+  permission$       lib_iam.permission,
+  principal$        lib_iam.principal,
+  resource$         lib_iam.resource_type__id,
+  dry_run$          bool default false
+) returns boolean as $$
 declare
-  parsed_permission$       lib_iam.permission;
-  parsed_principal$        lib_iam.principal_type__id;
-  parsed_resource$         lib_iam.resource_type__id;
+  parsed_principal$ lib_iam.principal_type__id;
   event_type$              text;
   result$                  boolean default false;
   bind_permissions$        int;
   root_organization__id$   uuid[];
 begin
 
-  parsed_resource$ = lib_iam._parse_resource(resource$);
-  parsed_permission$ = lib_iam._parse_permission(permission$);
+  -- ensure principal is valid.
   parsed_principal$ = lib_iam._parse_principal(principal$);
 
   -- @TODO conditions v3
-  if parsed_resource$.resource_type = '*' then
+  if resource$.resource_type = '*' then
 
     select count(*) from lib_iam.role__permission rp
       inner join lib_iam.bindings on bindings.service__id = rp.service__id and bindings.role__id = rp.role__id and bindings.member in ('allUsers', principal$)
       inner join lib_iam.organization_policy op on bindings.policy__id = op.policy__id
-      inner join lib_iam.permission on permission.service__id = rp.permission_service__id and permission.type__id = rp.permission_type__id and permission.verb__id = parsed_permission$.verb__id
-      where rp.permission_service__id = parsed_permission$.service__id
-        and rp.permission_type__id = parsed_permission$.type__id
-        and rp.permission_verb__id in ('*', parsed_permission$.verb__id) into bind_permissions$;
+      inner join lib_iam.permission on permission.service__id = rp.permission_service__id and permission.type__id = rp.permission_type__id and permission.verb__id = permission$.verb__id
+      where rp.permission_service__id = permission$.service__id
+        and rp.permission_type__id = permission$.type__id
+        and rp.permission_verb__id in ('*', permission$.verb__id) into bind_permissions$;
   else
 
-    case parsed_resource$.resource_type
+    case resource$.resource_type
       when 'organization' then
-        root_organization__id$ = lib_iam._find_parent_organizations_by_organization(parsed_resource$.resource__id);
+        root_organization__id$ = lib_iam._find_parent_organizations_by_organization(resource$.resource__id);
       when 'folder' then
-        root_organization__id$ = lib_iam._find_parent_organizations_by_folder(parsed_resource$.resource__id);
+        root_organization__id$ = lib_iam._find_parent_organizations_by_folder(resource$.resource__id);
       when 'resource' then
-        root_organization__id$ = lib_iam._find_parent_organizations_by_resource(parsed_resource$.resource__id);
+        root_organization__id$ = lib_iam._find_parent_organizations_by_resource(resource$.resource__id);
       else
         raise 'unsupported resource type in authorize' using errcode = 'check_violation';
     end case;
@@ -125,10 +134,10 @@ begin
     select count(*) from lib_iam.role__permission rp
       inner join lib_iam.bindings on bindings.service__id = rp.service__id and bindings.role__id = rp.role__id and bindings.member in ('allUsers', principal$)
       inner join lib_iam.organization_policy op on bindings.policy__id = op.policy__id and op.organization__id = any(root_organization__id$)
-      inner join lib_iam.permission on permission.service__id = rp.permission_service__id and permission.type__id = rp.permission_type__id and permission.verb__id = parsed_permission$.verb__id
-      where rp.permission_service__id = parsed_permission$.service__id
-        and rp.permission_type__id = parsed_permission$.type__id
-        and rp.permission_verb__id in ('*', parsed_permission$.verb__id) into bind_permissions$;
+      inner join lib_iam.permission on permission.service__id = rp.permission_service__id and permission.type__id = rp.permission_type__id and permission.verb__id = permission$.verb__id
+      where rp.permission_service__id = permission$.service__id
+        and rp.permission_type__id = permission$.type__id
+        and rp.permission_verb__id in ('*', permission$.verb__id) into bind_permissions$;
   end if;
 
   if bind_permissions$ > 0 then
@@ -144,9 +153,9 @@ begin
     end if;
 
     perform lib_event.create(type$ => event_type$, payload$ => json_build_object(
-        'permission', permission$::text,
-        'principal', principal$::text,
-        'resource', resource$::text,
+        'permission', permission$.service__id::text || ':' || permission$.type__id::text || ':' || permission$.verb__id::text,
+        'principal', principal$,
+        'resource', resource$.resource_type::text || ':' || resource$.resource__id::text,
         'occurred_at', now(),
         'created_at', now()
       )::jsonb);
