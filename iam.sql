@@ -37,6 +37,7 @@ create table lib_iam.type
   primary key(service__id, type__id)
 );
 
+create index type_t_service_index on lib_iam.type (service__id);
 comment on column lib_iam.type.type__id is 'Type identifier e.g: "invoice"';
 
 create table lib_iam.verb
@@ -55,6 +56,7 @@ create table lib_iam.permission
   foreign key (service__id, type__id) references lib_iam.type (service__id, type__id) on delete restrict on update cascade
 );
 
+create index permission_t_type_index on lib_iam.permission (service__id, type__id);
 comment on column lib_iam.permission.type__id is 'the resource type this permission defines. E.g. "invoice"';
 comment on column lib_iam.permission.verb__id is 'the verb for this resource type this permission defines E.g. "create"';
 
@@ -67,6 +69,7 @@ create table lib_iam.role
   primary key (service__id, role__id)
 );
 
+create index role_t_service_index on lib_iam.role (service__id);
 comment on table lib_iam.role is 'role={service__id}.{role_title__id}
   test_manager.viewer
   test_manager.editor
@@ -82,3 +85,6 @@ create table lib_iam.role__permission
   foreign key (permission_service__id, permission_type__id, permission_verb__id) references lib_iam.permission (service__id, type__id, verb__id) on delete restrict on update cascade,
   foreign key (service__id, role__id) references lib_iam.role (service__id, role__id) on delete restrict on update cascade
 );
+
+create index role__permission_t_permission_index on lib_iam.role__permission (permission_service__id, permission_type__id, permission_verb__id);
+create index role__permission_t_role_index on lib_iam.role__permission (service__id, role__id);

@@ -16,6 +16,8 @@ create table lib_iam.organization
   status                  uuid not null references lib_fsm.state_machine(state_machine__id) on delete restrict on update cascade
 );
 
+create index organization_t_organization_index on lib_iam.organization (parent_organization__id);
+
 create table lib_iam.folder
 (
   folder__id              uuid not null primary key default public.gen_random_uuid(),
@@ -35,6 +37,9 @@ create table lib_iam.folder
   constraint folder_must_have_only_one_parent check ((parent_folder__id is null) != (parent_organization__id is null))
 );
 
+create index folder_t_parent_folder_index on lib_iam.folder (parent_folder__id);
+create index folder_t_parent_organization_index on lib_iam.folder (parent_organization__id);
+
 create table lib_iam.resource
 (
   resource__id      uuid               not null primary key default public.gen_random_uuid(),
@@ -44,6 +49,8 @@ create table lib_iam.resource
   name              lib_iam.identifier,
   foreign key (service__id, type__id) references lib_iam.type (service__id, type__id) on delete cascade on update cascade
 );
+
+create index resource_t_type_index on lib_iam.resource (service__id, type__id);
 
 ------------------------- API -------------------------
 

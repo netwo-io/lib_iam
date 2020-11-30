@@ -7,6 +7,8 @@ create table lib_iam.organization_policy
   -- @todo implement "condition" support (cf Google Cloud IAM Policy v3)
 );
 
+create index organization_policy_t_organization_index on lib_iam.organization_policy (organization__id);
+
 ------------------- BINDINGS --------------------------
 
 create table lib_iam.user_organization_policy_binding
@@ -19,6 +21,8 @@ create table lib_iam.user_organization_policy_binding
   unique (policy__id, member__id, service__id)
 );
 
+create index user_organization_policy_binding_t_role_index on lib_iam.user_organization_policy_binding (service__id, role__id);
+
 create table lib_iam.service_account_organization_policy_binding
 (
   policy__id  uuid not null references lib_iam.organization_policy (policy__id) on delete cascade on update cascade,
@@ -29,6 +33,8 @@ create table lib_iam.service_account_organization_policy_binding
   unique (policy__id, member__id, service__id)
 );
 
+create index service_account_organization_policy_binding_t_role_index on lib_iam.service_account_organization_policy_binding (service__id, role__id);
+
 create table lib_iam.all_authenticated_users_organization_policy_binding
 (
   policy__id  uuid not null references lib_iam.organization_policy (policy__id) on delete cascade on update cascade,
@@ -38,6 +44,8 @@ create table lib_iam.all_authenticated_users_organization_policy_binding
   unique (policy__id, service__id)
 );
 
+create index all_authenticated_users_organization_policy_binding_t_role_index on lib_iam.all_authenticated_users_organization_policy_binding (service__id, role__id);
+
 create table lib_iam.all_users_organization_policy_binding
 (
   policy__id  uuid not null references lib_iam.organization_policy (policy__id) on delete cascade on update cascade,
@@ -46,6 +54,8 @@ create table lib_iam.all_users_organization_policy_binding
   foreign key (service__id, role__id) references lib_iam.role (service__id, role__id) on delete cascade on update cascade,
   unique (policy__id, service__id)
 );
+
+create index all_users_organization_policy_binding_t_role_index on lib_iam.all_users_organization_policy_binding (service__id, role__id);
 
 drop domain if exists lib_iam.principal;
 create domain lib_iam.principal as text
