@@ -10,10 +10,18 @@ set search_path = pg_catalog;
 \ir ./permissions.sql
 \ir ./roles.sql
 
--- modules
+-- rbac modules
 
 \ir ./member/init.sql
 \ir ./resource/init.sql
 \ir ./policy/init.sql
+
+\ir ./rbac_authorize.sql
+
+-- acl modules
+
+\ir ./resource_access_control_list/init.sql
+
+-- interface
 
 \ir ./authorize.sql

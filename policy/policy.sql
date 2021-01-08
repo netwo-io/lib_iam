@@ -122,7 +122,6 @@ $$
 declare
   parsed_principal$ lib_iam.principal_type__id;
 begin
-
   parsed_principal$ = lib_iam._parse_principal(principal$);
   if (parsed_principal$.member__id is null) then
     execute format(

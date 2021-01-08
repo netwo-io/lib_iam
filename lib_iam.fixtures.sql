@@ -15,6 +15,8 @@ entry;test_manager2;test manager entry
 COPY lib_iam.permission (service__id, type__id, verb__id) FROM STDIN (FREEZE ON, DELIMITER ';');
 test_manager;invoice;create
 test_manager;invoice;get
+test_manager;invoice;set_acl
+test_manager;invoice;delete
 test_manager2;log;get
 test_manager2;entry;*
 test_manager2;entry;get
@@ -38,7 +40,9 @@ COPY lib_iam.role__permission (
   role__id
 ) FROM STDIN (FREEZE ON, DELIMITER ';');
 test_manager;invoice;get;test_manager;viewer
+test_manager;invoice;get;test_manager;editor
 test_manager;invoice;create;test_manager;editor
+test_manager;invoice;set_acl;test_manager;editor
 test_manager2;log;get;test_manager2;viewer
 test_manager2;entry;*;test_manager2;admin
 \.

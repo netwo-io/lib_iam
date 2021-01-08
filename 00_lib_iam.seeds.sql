@@ -32,5 +32,6 @@ update
 delete
 enable
 disable
+set_acl
 *
 \.
