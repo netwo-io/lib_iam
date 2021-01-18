@@ -4,6 +4,14 @@ create table lib_iam.resource_acl
     resource__id uuid references lib_iam.resource (resource__id) on delete cascade on update cascade
 );
 
+create table lib_iam.all_users_resource_acl
+(
+    policy__id uuid primary key references lib_iam.resource_acl (policy__id) on delete cascade on update cascade,
+    grant_verb lib_iam.wildcardable_identifier references lib_iam.verb (verb__id)
+);
+comment on table lib_iam.all_users_resource_acl is 'Access control list on resources to anonymous users';
+
+
 create table lib_iam.all_authenticated_users_resource_acl
 (
     policy__id uuid primary key references lib_iam.resource_acl (policy__id) on delete cascade on update cascade,
@@ -18,6 +26,38 @@ create table lib_iam.member_resource_acl
     grant_verb lib_iam.wildcardable_identifier references lib_iam.verb (verb__id)
 );
 
+
+create or replace function lib_iam.resource_acl_aggregate()
+    returns table
+            (
+                resource__id uuid,
+                policy__id   uuid,
+                member       text,
+                grant_verb   lib_iam.wildcardable_identifier
+            )
+as
+$$
+select resource__id, policy__id, member, grant_verb
+from (
+         select member,
+                policy__id,
+                grant_verb
+         from lib_iam.member_resource_acl
+         union
+         select 'allAuthenticatedUsers' as member,
+                policy__id,
+                grant_verb
+         from lib_iam.all_authenticated_users_resource_acl
+         union
+         select 'allUsers' as member,
+                policy__id,
+                grant_verb
+         from lib_iam.all_users_resource_acl
+     ) acls
+         join lib_iam.resource_acl using (policy__id)
+    ;
+$$ security invoker language sql
+   stable;
 
 create or replace function lib_iam.resource_acl_set(resource__id$ uuid,
                                                     principal$ lib_iam.principal,
@@ -55,17 +95,10 @@ begin
     end if;
 
     perform *
-    from lib_iam.resource_acl
-             join (
-        select 'allAuthenticatedUsers' as member, policy__id, grant_verb
-        from lib_iam.all_authenticated_users_resource_acl
-        union
-        select member, policy__id, grant_verb
-        from lib_iam.member_resource_acl
-    ) acls using (policy__id)
+    from lib_iam.resource_acl_aggregate()
     where resource__id = resource$.resource__id
-      and acls.grant_verb = grant_verb$
-      and acls.member = target_principal$;
+      and grant_verb = grant_verb$
+      and member = target_principal$;
     if not found then
         parsed_principal$ = lib_iam._parse_principal(target_principal$);
         policy__id$ = public.gen_random_uuid();
@@ -74,7 +107,9 @@ begin
         if target_principal$ = 'allAuthenticatedUsers' then
             insert into lib_iam.all_authenticated_users_resource_acl (policy__id, grant_verb)
             values (policy__id$, grant_verb$);
-            raise warning 'inserted allAuthenticatedUsers "%" ACL on resource "%"', grant_verb$, resource__id$;
+        elsif target_principal$ = 'allUsers' then
+            insert into lib_iam.all_users_resource_acl (policy__id, grant_verb)
+            values (policy__id$, grant_verb$);
         else
             insert into lib_iam.member_resource_acl (policy__id, member, grant_verb)
             values (policy__id$, target_principal$, grant_verb$);
@@ -108,18 +143,10 @@ begin
 
     delete
     from lib_iam.resource_acl
-    where policy__id = (select resource_acl.policy__id
-                        from lib_iam.resource_acl
-                                 join (
-                            select 'allAuthenticatedUsers' as member, policy__id, grant_verb
-                            from lib_iam.all_authenticated_users_resource_acl
-                            union
-                            select member, policy__id, grant_verb
-                            from lib_iam.member_resource_acl
-                        ) acls using (policy__id)
+    where policy__id = (select resource_acl.policy__id from lib_iam.resource_acl_aggregate()
                         where resource__id = resource$.resource__id
-                          and acls.grant_verb = grant_verb$
-                          and acls.member = target_principal$);
+                          and grant_verb = grant_verb$
+                          and member = target_principal$);
 end;
 $$ security definer language plpgsql;
 comment on function lib_iam.resource_acl_remove(uuid,lib_iam.principal,lib_iam.principal,lib_iam.wildcardable_identifier)

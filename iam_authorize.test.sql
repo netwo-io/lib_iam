@@ -223,7 +223,30 @@ begin
                               ('resource:' || invoice__id$)::lib_iam.resource_name),
             true
         );
+    perform lib_iam.resource_acl_remove(invoice__id$, 'user:' || editor_user__id$, 'allAuthenticatedUsers', 'create');
 
+    -- Test anonymous access
+    perform lib_iam.resource_acl_set(invoice__id$, 'user:' || editor_user__id$, 'allUsers', 'create');
+    perform lib_test.assert_equal(
+            lib_iam.authorize('test_manager:invoice:create'::lib_iam.permission_name,
+                              ('user:' || viewer_user__id$)::lib_iam.principal,
+                              ('resource:' || invoice__id$)::lib_iam.resource_name),
+            true
+        );
+    perform lib_test.assert_equal(
+            lib_iam.authorize('test_manager:invoice:create'::lib_iam.permission_name,
+                              'allUsers',
+                              ('resource:' || invoice__id$)::lib_iam.resource_name),
+            true
+        );
+
+    perform lib_iam.resource_acl_remove(invoice__id$, 'user:' || editor_user__id$, 'allUsers', 'create');
+    perform lib_test.assert_equal(
+            lib_iam.authorize('test_manager:invoice:create'::lib_iam.permission_name,
+                              'allUsers',
+                              ('resource:' || invoice__id$)::lib_iam.resource_name),
+            false
+        );
 
 end ;
 $$ language plpgsql;

@@ -26,6 +26,8 @@ begin
           and rp.permission_verb__id in ('*', permission$.verb__id) into bind_permissions$;
     else
 
+
+
         case resource$.resource_type
             when 'organization' then
                 root_organization__ids$ = lib_iam._find_parent_organizations_by_organization(resource$.resource__id);
@@ -38,7 +40,8 @@ begin
             end case;
 
         if root_organization__ids$ is null then
-            raise 'unsupported resource type in authorize' using errcode = 'check_violation';
+            raise 'root organization not found for % with id %', resource$.resource_type, resource$.resource__id
+                using errcode = 'check_violation';
         end if;
 
         select count(*) from lib_iam.role__permission rp
