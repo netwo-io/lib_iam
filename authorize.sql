@@ -155,4 +155,5 @@ $$ volatile
 
 comment on function lib_iam.authorize(lib_iam.permission,lib_iam.principal,lib_iam.resource_type__id,boolean)
     is 'Returns a boolean indicating if the principal has the specified permission on the specified resource either via RBAC or resources ACLs. '
+    'ACLs are checked first. '
     'When dry_run is false, an iam event is added to log the permission.';
