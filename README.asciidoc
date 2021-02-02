@@ -1,0 +1,196 @@
+:toc:
+:toc-placement!:
+
+
+= Agnostic Identity and Access Management (IAM) library for PostgreSQL (PL/pgSQL)
+
+IAM lets you grant granular access to specific resources and helps prevent access to other resources. IAM lets you adopt the security principle of least privilege, which states that nobody should have more permissions than they actually need.
+
+toc::[]
+
+
+== Features
+
+Implemented:
+
+* Role Based Access Control (RBAC)
+* Permissive resource level Access Control Lists (ACL)
+
+Not implemented "would be nice to have":
+
+* Role hierarchy. Roles are flat
+* Folder/Organization level ACLs
+* Restrictive ACLs
+
+
+[how-iam-works]
+== How IAM works
+
+
+With IAM, you manage access control by defining *who* (identity) has what *access* (role) for *which resource*. For example, if your project is a chat application, the IAM will manage access to channels, messages, comments, files, and your application resources. The <<organizations,organizations>>, <<folders,folders>> that you use to organize your <<resource,resource>> are also resources.
+
+In IAM, permission to access a resource isn't granted directly to the end user. Instead, permissions are grouped into roles, and roles are granted to authenticated members. An IAM policy defines and enforces what roles are granted to which members, and this policy is attached to a resource. When an authenticated member attempts to access a resource, IAM checks the resource's policy to determine whether the action is permitted.
+
+// WHEN WE WILL WANT TO CREATE OUR OWN ILLUSTRATION:
+// generate the images below with:
+// asciidoctor -r asciidoctor-diagram README.asciidoc && rm README.html
+
+// The following diagram illustrates permission management in IAM.
+// ifdef::env-github[image::docs/diagram-classes.png[Diagram classes]]
+// ifndef::env-github[]
+// [plantuml,docs/diagram-classes,png]
+// ....
+// class BlockProcessor
+// class DiagramBlock
+// class DitaaBlock
+// class PlantUmlBlock
+// BlockProcessor <|-- DiagramBlock
+// DiagramBlock <|-- DitaaBlock
+// DiagramBlock <|-- PlantUmlBlock
+// ....
+// endif:[]
+
+image::docs/iam-overview-basics.svg[Source: Google Cloud IAM documentation]
+
+This model for access management has three main parts:
+
+* **<<members,Member>>**. A <<members,member>> can be an Account (for end users), a service account (for apps and virtual machines) that can access a <<resources,resource>>. The identity of a member is an email address associated with a user, service account.
+* **<<roles,Role>>**. A <<roles,role>> is a collection of <<permissions,permissions>>. Permissions determine what operations are allowed on a <<resources,resource>>. When you grant a role to a member, you grant all the permissions that the role contains.
+* **<<policy,Policy>>**. The IAM policy binds one or more members to a <<roles,role>>. When you want to define who (member) has what type of access (role) on a <<resources,resource>>, you create a <<policy,policy>> and attach it to the <<resources,resource>>.
+
+The IAM policy binds <<members,members>>, such as `userid@gmail.com`, to <<roles,roles>>, such as the Ticket Manager Editor role (`ticket_manager.editor`). If the <<policy,policy>> is attached to a <<folders,folder>>, the members gain the specified roles within the folder.
+
+The rest of this page describes these concepts in greater detail.
+
+[members]
+== Concepts related to identity
+
+In IAM, you grant access to members. Members can be of the following types:
+
+* <<user,User Account>>
+* <<service-account,Service account>>
+* <<allAuthenticatedUsers,All authenticated users>>
+* <<allusers,All users>>
+
+[user]
+=== User Account
+
+A User Account represents a user, developer, an administrator, or any other person who interacts with your application. Any email address that's associated with a user account can be an identity. New users can sign up for a User Account by going to your application signup page that will call `lib_iam.user_create()` function.
+
+User accounts are stored in `lib_iam.user` table.
+
+[service-account]
+=== Service account
+
+A service account is an account for an application instead of an individual end user. When you run code, the code runs as the account you specify. You can create as many service accounts as needed (`lib_iam.service_account_create()` function) to represent the different logical components of your application.
+
+Service accounts are stored in `lib_iam.service_account` table.
+
+[allAuthenticatedUsers]
+=== All authenticated users
+The value `allAuthenticatedUsers` is a special identifier that represents all service accounts and all users on the internet who have authenticated with a User Account. Users who aren't authenticated, such as anonymous visitors, aren't included.
+
+//Some resource types do not support this member type.
+
+[[allUsers]]
+=== All users
+The value `allUsers` is a special identifier that represents anyone who is on the internet, including authenticated and unauthenticated users.
+
+//Some resource types do not support this member type.
+
+== Concepts related to access management
+
+When an authenticated <<members,member>> attempts to access a <<resources,resource>>, IAM checks the resource's IAM <<policy,policy>> to determine whether the action is allowed.
+
+This section describes the entities and concepts involved in the authorization process.
+
+[resources]
+=== Resource
+
+If a user needs access to a specific resource, you can grant the user a <<roles,role>> for that resource. In the case of a ticket management application, some examples of resources are comments, files, and boards.
+
+You can grant IAM permissions at the <<folders,folder>> level. The permissions are then inherited by all resources within that folder.
+
+For information on what roles can be granted on which resources, list every available roles with `lib_iam.roles` view.
+
+[permissions]
+=== Permissions
+Permissions determine what operations are allowed on a resource. In the IAM world, permissions are represented in the form of `service.resource_type.verb`, for example, `ticket_manager.comment.create`.
+
+Permissions often correspond one-to-one with REST API methods. That is, each of your application service has an associated set of permissions for each REST API method that it exposes. The caller of that method needs those permissions to call that method. For example, if you use the ticket manager application, and you need to call the comment.create() method, you must have the `ticket_manager.comment.create` permission for that application.
+
+You don't grant permissions to users directly. Instead, you identify <<roles,role>> that contain the appropriate permissions, and then grant those roles to the <<user,user>>. For a list of all available permissions query the `lib_iam.permissions` view. For a list of all roles and their corresponding permissions query the `lib_iam.roles` view.
+
+[roles]
+=== Roles
+A role is a collection of <<permissions,permissions>>. You cannot grant a permission to the <<user,user>> directly. Instead, you grant them a role. When you grant a role to a user, you grant them all the permissions that the role contains.
+
+image::docs/role-and-permissions.svg[Source: Google Cloud IAM documentation]
+
+`lib_iam` once executed in your database does not include default roles nor <<permissions,permissions>>. It's your app, your specific problem domain. You will have to define them. However you might want to define:
+
+* *Basic roles*: Roles that you will make available to your users. For instance `Owner`, `Editor`, and `Viewer`.
+
+And then let your own application users define:
+
+* *Custom roles*: Roles that your own <<user,user>> can create to tailor <<permissions,permissions>> to the needs of their organization when predefined roles don't meet their needs.
+
+
+[policy]
+=== Policy
+You can grant <<roles,roles>> to <<members,users>> by creating an IAM policy, which is a collection of statements that define who has what type of access. A policy is attached to a <<resource,resource>> and is used to enforce access control whenever that resource is accessed.
+
+image::docs/iam-overview-policy.png[Source: Google Cloud IAM documentation]
+
+An IAM policy is represented by the IAM Policy object. An IAM Policy object consists of a list of bindings (query `lib_iam.bindings` view). A Binding binds a list of <<members,members>> to a <<roles,role>>.
+
+* role: The role you want to grant to the member. role is specified in the form of `service.roleName`. For example, our ticket application provides the roles `ticket_manager.commenter`, `ticket_manager.editor`, and `ticket_manager.lead_dev`, among others.
+
+* members: A list of one or more identities as described in the <<members,Concepts related to identity>> section in this document. Each member type is identified with a prefix, such as:
+    * a <<user,User Account>> (`user:`)
+    * a <<service-account,Service account>> (`serviceAccount:`)
+    * <<allAuthenticatedUsers,All authenticated users>> (`allAuthenticatedUsers`)
+    * <<allusers,All users>> (`allUsers`)
+
+In the following example code snippet, the storage.objectAdmin role is granted to the following members by using the appropriate prefix: user:ali@example.com, serviceAccount:my-other-app@appspot.gserviceaccount.com, group:admins@example.com, and domain:google.com. The objectViewer role is granted to user:maria@example.com.
+
+List all defined IAM policies with `lib_iam.policies` view.
+
+
+[resource-hierarchy]
+== Resource hierarchy
+
+`lib_iam` resources are organized hierarchically:
+
+[organizations]
+* The *organization* is the root node in the hierarchy. List all organizations with `lib_iam.organizations` view.
+
+[folders]
+* *Folders* are children of the organization. List all organizations with `lib_iam.folders` view.
+
+* *Resources* for each service are descendants of projects. Each resource has exactly one parent. List all organizations with `lib_iam.resources` view.
+
+The following diagram is an example of a `lib_iam` resource hierarchy. Note that projects abstraction are *not supported* in `lib_iam` and can be emulated with <<folders,folders>> instead.
+
+image::docs/policy-inheritance.svg[(Source: Google Cloud IAM documentation]
+
+You can set an IAM <<policy,policy>> at any level in the resource hierarchy: the <<organizations,organizations>> level, the <<folders,folders>> level, or the <<resource,resource>> level. Resources inherit the policies of all of their parent resources. The effective policy for a resource is the union of the policy set on that resource and the policies inherited from higher up in the hierarchy.
+
+This policy inheritance is transitive; in other words, resources inherit policies from folders, which inherit policies from the organization. Therefore, the organization-level policies also apply at the resource level.
+
+For example: In the preceding diagram, topic_a is a Pub/Sub resource that lives under the project example-prod. If you grant the Editor role to micah@example.com for example-prod, and grant the Publisher role to song@example.com for topic_a, you effectively grant the Editor role for topic_a to micah@example.com and the Publisher role to song@example.com.
+
+The policies for child resources inherit from the policies for their parent resources. For example, if you grant the Editor role to a user for a project, and grant the Viewer role to the same user for a child resource, then the user still has the Editor role grant for the child resource. If you change the resource hierarchy, the policy inheritance changes as well. For example, moving a project into an organization causes the project to inherit from the organization's IAM policy.
+
+
+[tests]
+== Tests
+
+See unit tests in *.test.sql files. They provide clear example of API usages.
+
+[sql-conventions]
+== SQL Conventions
+~~~~~~~~~~~~~~~
+
+
+Code is written https://github.com/fgribreau/sql-convention/[following standard SQL-convention].
