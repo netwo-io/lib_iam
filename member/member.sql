@@ -105,22 +105,21 @@ $$ security definer language plpgsql;
 create or replace function lib_iam.user_change_password(token$ text, new$ text) returns uuid as
 $$
 declare
-  member__id$ uuid;
-  usr$        lib_iam.user;
+    member__id$ uuid;
 begin
+    member__id$ = lib_iam.verify_auth_token(token$);
 
-  member__id$ = lib_iam.verify_auth_token(token$);
-  select member__id from lib_iam.user
+    select member__id
+    from lib_iam.user
     where member__id = member__id$
-    into usr$;
+    into member__id$;
+    if not found then
+        raise 'not_found' using errcode = 'check_violation';
+    end if;
 
-  if not found then
-    raise 'not_found' using errcode = 'check_violation';
-  end if;
-
-  perform lib_iam.check_password_validity(new$);
-  update lib_iam.user set password = lib_iam.encrypt_pass(new$) where member__id = usr$.member__id;
-  return member__id$;
+    perform lib_iam.check_password_validity(new$);
+    update lib_iam.user set password = lib_iam.encrypt_pass(new$) where member__id = member__id$;
+    return member__id$;
 end;
 $$ security definer language plpgsql;
 
