@@ -36,7 +36,7 @@ declare
   count$ int;
 begin
 
-  service_account$ = lib_iam.service_account_create(); --> insert into user_member member_id, invitation_status, status
+  service_account$ = lib_iam.service_account_create('test1'); --> insert into user_member member_id, invitation_status, status
   select count(1) from lib_iam.members where id = service_account$ into count$;
   perform lib_test.assert_equal(count$, 1);
 end;
@@ -50,7 +50,7 @@ declare
 begin
 
   user_id$ = lib_iam.user_create('password');
-  service_account$ = lib_iam.service_account_create();
+  service_account$ = lib_iam.service_account_create('test2');
   select count(1) from lib_iam.members where id in (user_id$, service_account$) into count$;
   perform lib_test.assert_equal(count$, 2);
 end;

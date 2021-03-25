@@ -8,7 +8,9 @@ comment on table lib_iam.member is 'Abstract table inherited by user, service ac
 
 create table lib_iam.service_account
 (
-  primary key (member__id) -- table inheritance only copy table structure we need to also specify again constraints
+  primary key (member__id), -- table inheritance only copy table structure we need to also specify again constraints
+  name text not null,
+  description text
 ) inherits (lib_iam.member);
 
 create table lib_iam.user
@@ -36,11 +38,9 @@ begin
 end;
 $$ language plpgsql;
 
-create or replace function lib_iam.service_account_create() returns uuid as $$
-declare
-  member__id$ uuid;
+create or replace function lib_iam.service_account_create(name$ text, member__id$ uuid default public.gen_random_uuid()) returns uuid as $$
 begin
-  insert into lib_iam.service_account (member__id) values (default) returning member__id into member__id$;
+  insert into lib_iam.service_account (name, member__id) values (name$, member__id$);
   return member__id$;
 end;
 $$ language plpgsql;

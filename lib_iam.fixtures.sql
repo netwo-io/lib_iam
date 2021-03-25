@@ -55,8 +55,8 @@ COPY lib_iam.user (member__id, password) FROM STDIN (FREEZE ON, DELIMITER ';');
 \.
 
 \echo # filling table lib_iam.service_account
-COPY lib_iam.service_account (member__id) FROM STDIN (FREEZE ON, DELIMITER ';');
-00000000-0000-0000-0000-0000000000f1
+COPY lib_iam.service_account (name, member__id) FROM STDIN (FREEZE ON, DELIMITER ';');
+fixture0;00000000-0000-0000-0000-0000000000f1
 \.
 
 \echo # filling table lib_iam.organization
