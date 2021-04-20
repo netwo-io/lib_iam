@@ -114,3 +114,8 @@ COPY lib_iam.user_organization_policy_binding (policy__id, member__id, service__
 00000000-0000-0000-0000-0000000000d7;00000000-0000-0000-0000-0000000000e2;test_manager2;viewer
 00000000-0000-0000-0000-0000000000d9;00000000-0000-0000-0000-0000000000e3;test_manager2;admin
 \.
+
+\echo # filling table lib_iam.user_organization_policy_binding
+COPY lib_iam.service_account_organization_policy_binding (policy__id, member__id, service__id, role__id) FROM STDIN (FREEZE ON, DELIMITER ';');
+00000000-0000-0000-0000-0000000000d7;00000000-0000-0000-0000-0000000000f1;test_manager2;viewer
+\.

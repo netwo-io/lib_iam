@@ -32,13 +32,45 @@ $$ language plpgsql;
 
 create or replace function lib_test.test_case_lib_iam_can_create_user_service_account() returns void as $$
 declare
-  service_account$ uuid;
-  count$ int;
+    service_account$ uuid;
+    count$ int;
 begin
 
-  service_account$ = lib_iam.service_account_create('test1'); --> insert into user_member member_id, invitation_status, status
-  select count(1) from lib_iam.members where id = service_account$ into count$;
-  perform lib_test.assert_equal(count$, 1);
+    service_account$ = lib_iam.service_account_create('test1'); --> insert into user_member member_id, invitation_status, status
+    select count(1) from lib_iam.members where id = service_account$ into count$;
+    perform lib_test.assert_equal(count$, 1);
+end;
+$$ language plpgsql;
+
+create or replace function lib_test.test_case_lib_iam_can_generate_service_account_token() returns void as $$
+declare
+    service_account$ uuid;
+    service_account_token$ text;
+    token$ text;
+begin
+
+    service_account$ = lib_iam.service_account_create('test1'); --> insert into user_member member_id, invitation_status, status
+    token$ = lib_iam.service_account_generate_token('test1', service_account$);
+    select token from lib_iam.service_account where member__id = service_account$ into service_account_token$;
+    perform lib_test.assert_equal(token$, service_account_token$);
+end;
+$$ language plpgsql;
+
+create or replace function lib_test.test_case_lib_iam_service_account_token_not_generated_for_deleted_member() returns void as $$
+declare
+    service_account$ uuid;
+begin
+
+    begin
+      service_account$ = lib_iam.service_account_create('test1'); --> insert into user_member member_id, invitation_status, status
+      perform lib_iam.service_account_delete(service_account$);
+      perform lib_iam.service_account_generate_token('test1', service_account$);
+    exception
+        when check_violation then
+            perform lib_test.assert_equal(sqlerrm, 'service account is revoked');
+            return;
+    end;
+    perform lib_test.fail('A token should not be created for a revoked service_account.');
 end;
 $$ language plpgsql;
 

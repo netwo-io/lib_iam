@@ -10,13 +10,15 @@ create table lib_iam.service_account
 (
   primary key (member__id), -- table inheritance only copy table structure we need to also specify again constraints
   name text not null,
-  description text
+  description text,
+  token text,
+  revoked_at timestamptz
 ) inherits (lib_iam.member);
 
 create table lib_iam.user
 (
   password varchar(64) not null,
-  is_login_restricted boolean not null default false,
+  deleted_at timestamptz,
   user_secret uuid,
   -- status uuid not null references lib_fsm.state_machine(state_machine__id) on delete restrict on update restrict,
   primary key (member__id) -- table inheritance only copy table structure we need to also specify again constraints
@@ -34,14 +36,30 @@ $$ language plpgsql;
 
 create or replace function lib_iam.user_delete(member__id$ uuid) returns void as $$
 begin
-  update lib_iam.user set is_login_restricted = true where member__id = member__id$;
+  update lib_iam.user set deleted_at = now() where member__id = member__id$;
 end;
 $$ language plpgsql;
 
 create or replace function lib_iam.service_account_create(name$ text, member__id$ uuid default public.gen_random_uuid()) returns uuid as $$
 begin
-  insert into lib_iam.service_account (name, member__id) values (name$, member__id$);
-  return member__id$;
+    insert into lib_iam.service_account (name, member__id) values (name$, member__id$);
+    return member__id$;
+end;
+$$ language plpgsql;
+
+create or replace function lib_iam.service_account_delete(member__id$ uuid) returns void as $$
+begin
+    update lib_iam.service_account set revoked_at = now() where member__id = member__id$;
+end;
+$$ language plpgsql;
+
+create or replace function lib_iam.service_account_generate_token(name$ text, member__id$ uuid) returns text as $$
+declare
+  auth_token$ text;
+begin
+  auth_token$ = lib_iam.generate_service_account_token(member__id$, name$);
+  update lib_iam.service_account set token = auth_token$ where member__id = member__id$;
+  return auth_token$;
 end;
 $$ language plpgsql;
 
@@ -134,7 +152,7 @@ begin
 
   if not found then
     raise 'invalid user' using errcode = 'check_violation';
-  elsif usr$.is_login_restricted = true then
+  elsif usr$.deleted_at is not null then
     raise 'user is restricted' using errcode = 'check_violation';
   end if;
 
@@ -153,11 +171,44 @@ begin
 
   if not found then
     raise 'invalid email/password' using errcode = 'check_violation';
-  elsif usr$.is_login_restricted = true then
+  elsif usr$.deleted_at is not null then
     raise 'user is restricted' using errcode = 'check_violation';
   end if;
 
   return lib_iam.generate_token(usr$.member__id, lib_settings.get('jwt_secret'), lib_settings.get('jwt_lifetime')::int);
+end;
+$$ security definer language plpgsql;
+
+-- Service account key management.
+
+create or replace function lib_iam.generate_service_account_token(member__id$ uuid, identifier$ text) returns text as $$
+declare
+    service_account$  lib_iam.service_account;
+begin
+
+    select * from lib_iam.service_account
+    where member__id = member__id$
+    into service_account$;
+
+    if not found then
+        raise 'service account not found' using errcode = 'check_violation';
+    elsif service_account$.revoked_at is not null then
+        raise 'service account is revoked' using errcode = 'check_violation';
+    end if;
+
+    return lib_pgjwt.url_encode(
+            convert_to(
+                    lib_pgjwt.sign(
+                            json_build_object(
+                                    'sub', member__id$::uuid,
+                                    'exp', 2147483647, -- max integer
+                                    'identifier', identifier$
+                                ),
+                            lib_settings.get('jwt_secret')
+                        ),
+                    'utf8'
+                )
+        );
 end;
 $$ security definer language plpgsql;
 
@@ -175,7 +226,7 @@ begin
 
   if not found then
     raise 'user not found' using errcode = 'check_violation';
-  elsif usr$.is_login_restricted = true then
+  elsif usr$.deleted_at is not null then
     raise 'user is restricted' using errcode = 'check_violation';
   end if;
 
@@ -224,7 +275,7 @@ begin
 
   if not found then
     raise 'user not found' using errcode = 'check_violation';
-  elsif usr$.is_login_restricted = true then
+  elsif usr$.deleted_at is not null then
     raise 'user is restricted' using errcode = 'check_violation';
   end if;
 

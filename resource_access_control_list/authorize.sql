@@ -12,7 +12,7 @@ begin
         raise 'unknown_resource' using hint = coalesce(resource__id$::text, 'null');
     end if;
 
-    if principal$ like 'user:%' then
+    if principal$ like 'user:%' or principal$ like 'service_account:%' then
         authorized_principals$ = array ['allUsers', 'allAuthenticatedUsers', principal$];
     else
         authorized_principals$ = array ['allUsers', principal$];

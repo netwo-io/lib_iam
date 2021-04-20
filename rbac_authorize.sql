@@ -9,7 +9,7 @@ declare
     bind_permissions$ int;
     root_organization__ids$ uuid[];
 begin
-    if principal$ like 'user:%' then
+    if principal$ like 'user:%' or principal$ like 'service_account:%' then
         principals$ = array['allUsers', 'allAuthenticatedUsers', principal$];
     else
         principals$ = array['allUsers', principal$];

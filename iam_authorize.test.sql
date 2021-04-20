@@ -124,6 +124,9 @@ begin
     access$ = lib_iam.authorize('test_manager2:log:get', 'user:00000000-0000-0000-0000-0000000000e2',
                                 'resource:00000000-0000-0000-0000-0000000000c3', true);
     perform lib_test.assert_equal(access$, true);
+    access$ = lib_iam.authorize('test_manager2:log:get', 'service_account:00000000-0000-0000-0000-0000000000f1',
+                                'resource:00000000-0000-0000-0000-0000000000c3', true);
+    perform lib_test.assert_equal(access$, true);
 
     access$ =
             lib_iam.authorize('test_manager2:log:get', 'allUsers', 'organization:00000000-0000-0000-0000-0000000000a6',
