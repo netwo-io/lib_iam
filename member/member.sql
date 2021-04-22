@@ -12,6 +12,7 @@ create table lib_iam.service_account
   name text not null,
   description text,
   token text,
+  jti text,
   revoked_at timestamptz
 ) inherits (lib_iam.member);
 
@@ -56,9 +57,11 @@ $$ language plpgsql;
 create or replace function lib_iam.service_account_generate_token(name$ text, member__id$ uuid) returns text as $$
 declare
   auth_token$ text;
+  jti$        text;
 begin
-  auth_token$ = lib_iam.generate_service_account_token(member__id$, name$);
-  update lib_iam.service_account set token = auth_token$ where member__id = member__id$;
+  jti$ = public.gen_random_uuid()::text;
+  auth_token$ = lib_iam.generate_service_account_token(member__id$, name$, jti$);
+  update lib_iam.service_account set token = auth_token$, jti = jti$ where member__id = member__id$;
   return auth_token$;
 end;
 $$ language plpgsql;
@@ -181,7 +184,7 @@ $$ security definer language plpgsql;
 
 -- Service account key management.
 
-create or replace function lib_iam.generate_service_account_token(member__id$ uuid, identifier$ text) returns text as $$
+create or replace function lib_iam.generate_service_account_token(member__id$ uuid, identifier$ text, jti$ text) returns text as $$
 declare
     service_account$  lib_iam.service_account;
 begin
@@ -196,18 +199,15 @@ begin
         raise 'service account is revoked' using errcode = 'check_violation';
     end if;
 
-    return lib_pgjwt.url_encode(
-            convert_to(
-                    lib_pgjwt.sign(
-                            json_build_object(
-                                    'sub', member__id$::uuid,
-                                    'exp', 2147483647, -- max integer
-                                    'identifier', identifier$
-                                ),
-                            lib_settings.get('jwt_secret')
-                        ),
-                    'utf8'
-                )
+    return lib_pgjwt.sign(
+            json_build_object(
+                    'sub', member__id$::uuid,
+                    'exp', 2147483647, -- max integer
+                    'identifier', identifier$,
+                    'jti', jti$,
+                    'role', 'webuser'
+                ),
+            lib_settings.get('jwt_secret')
         );
 end;
 $$ security definer language plpgsql;
