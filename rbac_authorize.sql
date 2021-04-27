@@ -1,7 +1,7 @@
 create or replace function lib_iam.rbac_authorize(
     permission$ lib_iam.permission,
     principal$ lib_iam.principal,
-    resource$ lib_iam.resource_type__id
+    resource$ lib_iam.resource_type__name
 ) returns boolean as
 $$
 declare
@@ -30,17 +30,17 @@ begin
 
         case resource$.resource_type
             when 'organization' then
-                root_organization__ids$ = lib_iam._find_parent_organizations_by_organization(resource$.resource__id);
+                root_organization__ids$ = lib_iam._find_parent_organizations_by_organization(resource$.resource_name::uuid);
             when 'folder' then
-                root_organization__ids$ = lib_iam._find_parent_organizations_by_folder(resource$.resource__id);
+                root_organization__ids$ = lib_iam._find_parent_organizations_by_folder(resource$.resource_name::uuid);
             when 'resource' then
-                root_organization__ids$ = lib_iam._find_parent_organizations_by_resource(resource$.resource__id);
+                root_organization__ids$ = lib_iam._find_parent_organizations_by_resource(resource$.resource_name::lib_iam.identifier);
             else
                 raise 'unsupported resource type % in authorize', resource$.resource_type using errcode = 'check_violation';
             end case;
 
         if root_organization__ids$ is null then
-            raise 'root organization not found for % with id %', resource$.resource_type, resource$.resource__id
+            raise 'root organization not found for % with name %', resource$.resource_type, resource$.resource_name
                 using errcode = 'check_violation';
         end if;
 

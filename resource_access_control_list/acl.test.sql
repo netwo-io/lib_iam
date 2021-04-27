@@ -17,15 +17,16 @@ begin
     perform lib_iam.organization_policy_add_binding(policy__id$, 'test_manager', 'editor',
                                                     'user:' || user__id$);
     resource__id$ =
-            lib_iam.resource_create('invoice-' || invoice__id$, folder__id$, 'test_manager',
-                                    'invoice', invoice__id$);
+            lib_iam.resource_create(invoice__id$::lib_iam.identifier, folder__id$, 'test_manager',
+                                    'invoice');
 
     perform lib_iam.resource_acl_set(invoice__id$, 'user:' || user__id$, 'user:' || user__id$, 'get');
 
     perform *
     from lib_iam.resource_acl
+        join lib_iam.resource using (resource__id)
              join lib_iam.member_resource_acl using (policy__id)
-    where resource__id = invoice__id$
+    where name = invoice__id$::lib_iam.identifier
       and member = 'user:'||user__id$
       and grant_verb = 'get';
     perform lib_test.assert_equal(found, true);
@@ -34,8 +35,9 @@ begin
 
     perform *
     from lib_iam.resource_acl
+             join lib_iam.resource using (resource__id)
              join lib_iam.all_authenticated_users_resource_acl using (policy__id)
-    where resource__id = invoice__id$
+    where name = invoice__id$::lib_iam.identifier
       and grant_verb = 'get';
     perform lib_test.assert_equal(found, true);
 end ;
@@ -62,8 +64,8 @@ begin
     perform lib_iam.organization_policy_add_binding(policy__id$, 'test_manager', 'viewer',
                                                     'user:' || user__id$);
     resource__id$ =
-            lib_iam.resource_create('invoice-' || invoice__id$, folder__id$, 'test_manager',
-                                    'invoice', invoice__id$);
+            lib_iam.resource_create(invoice__id$::lib_iam.identifier, folder__id$, 'test_manager',
+                                    'invoice');
 
     begin
         perform lib_iam.resource_acl_set(invoice__id$, 'user:' || user__id$, 'user:' || user__id$, 'get');
@@ -95,15 +97,16 @@ begin
     perform lib_iam.organization_policy_add_binding(policy__id$, 'test_manager', 'editor',
                                                     'user:' || user__id$);
     resource__id$ =
-            lib_iam.resource_create('invoice-' || invoice__id$, folder__id$, 'test_manager',
-                                    'invoice', invoice__id$);
+            lib_iam.resource_create(invoice__id$::lib_iam.identifier, folder__id$, 'test_manager',
+                                    'invoice');
 
     perform lib_iam.resource_acl_set(invoice__id$, 'user:' || user__id$, 'user:' || user__id$, 'get');
 
     perform *
     from lib_iam.resource_acl
+        join lib_iam.resource using (resource__id)
              join lib_iam.member_resource_acl using (policy__id)
-    where resource__id = invoice__id$
+    where name = invoice__id$::lib_iam.identifier
       and member = 'user:'||user__id$
       and grant_verb = 'get';
     perform lib_test.assert_equal(found, true);
@@ -112,8 +115,9 @@ begin
 
     perform *
     from lib_iam.resource_acl
+             join lib_iam.resource using (resource__id)
              join lib_iam.member_resource_acl using (policy__id)
-    where resource__id = invoice__id$
+    where name = invoice__id$::lib_iam.identifier
       and member = 'user:'||user__id$
       and grant_verb = 'get';
     perform lib_test.assert_equal(found, false);
@@ -143,15 +147,16 @@ begin
     perform lib_iam.organization_policy_add_binding(lib_iam.organization_policy_create(organization__id$), 'test_manager', 'viewer',
                                                     'user:' || viewer_user__id$);
     resource__id$ =
-            lib_iam.resource_create('invoice-' || invoice__id$, folder__id$, 'test_manager',
-                                    'invoice', invoice__id$);
+            lib_iam.resource_create(invoice__id$::lib_iam.identifier, folder__id$, 'test_manager',
+                                    'invoice');
 
     perform lib_iam.resource_acl_set(invoice__id$, 'user:' || editor_user__id$, 'user:' || editor_user__id$, 'get');
 
     perform *
     from lib_iam.resource_acl
+             join lib_iam.resource using (resource__id)
              join lib_iam.member_resource_acl using (policy__id)
-    where resource__id = invoice__id$
+    where name = invoice__id$::lib_iam.identifier
       and member = 'user:'||editor_user__id$
       and grant_verb = 'get';
     perform lib_test.assert_equal(found, true);
@@ -186,8 +191,8 @@ begin
     perform lib_iam.organization_policy_add_binding(policy__id$, 'test_manager', 'editor',
                                                     'user:' || user__id$);
     resource__id$ =
-            lib_iam.resource_create('invoice-' || invoice__id$, folder__id$, 'test_manager',
-                                    'invoice', invoice__id$);
+            lib_iam.resource_create(invoice__id$::lib_iam.identifier, folder__id$, 'test_manager',
+                                    'invoice');
 
     begin
         -- Invoice editor does not have "test_manager:invoice:delete" permission thus cannot grant it on a resource

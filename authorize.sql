@@ -45,13 +45,13 @@ end;
 $$ stable
    security definer language plpgsql;
 
-create or replace function lib_iam._find_parent_organizations_by_resource(resource__id$ uuid) returns uuid[] as
+create or replace function lib_iam._find_parent_organizations_by_resource(resource__id$ lib_iam.identifier) returns uuid[] as
 $$
 declare
     folder__id$ uuid;
 begin
 
-    select parent_folder__id from lib_iam.resource where resource__id = resource__id$ into folder__id$;
+    select parent_folder__id from lib_iam.resource where name = resource__id$ into folder__id$;
     if not found then
         raise sqlstate '42P01' using
             message = 'resource__id not found',
@@ -99,7 +99,7 @@ $$ volatile
 
 create or replace function lib_iam.authorize(permission$ lib_iam.permission,
                                              principal$ lib_iam.principal,
-                                             resource$ lib_iam.resource_type__id,
+                                             resource$ lib_iam.resource_type__name,
                                              dry_run$ bool default false) returns boolean as
 $$
 declare
@@ -115,7 +115,7 @@ begin
 
 
     if resource$.resource_type = 'resource' then
-        authorized_by_acl$ = lib_iam.acl_authorize(permission$, principal$, resource$.resource__id);
+        authorized_by_acl$ = lib_iam.acl_authorize(permission$, principal$, resource$.resource_name::lib_iam.identifier);
     end if;
 
     if not authorized_by_acl$ then
@@ -142,7 +142,7 @@ begin
                 'permission',
                 permission$.service__id::text || ':' || permission$.type__id::text || ':' || permission$.verb__id::text,
                 'principal', principal$,
-                'resource', resource$.resource_type::text || ':' || resource$.resource__id::text,
+                'resource', resource$.resource_type::text || ':' || resource$.resource_name::text,
                 'occurred_at', now(),
                 'created_at', now()
             )::jsonb);
@@ -153,7 +153,7 @@ end;
 $$ volatile
    security definer language plpgsql;
 
-comment on function lib_iam.authorize(lib_iam.permission,lib_iam.principal,lib_iam.resource_type__id,boolean)
+comment on function lib_iam.authorize(lib_iam.permission,lib_iam.principal,lib_iam.resource_type__name,boolean)
     is 'Returns a boolean indicating if the principal has the specified permission on the specified resource either via RBAC or resources ACLs. '
     'ACLs are checked first. '
     'When dry_run is false, an iam event is added to log the permission.';

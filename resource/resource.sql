@@ -3,8 +3,11 @@ create domain lib_iam.resource_name as text
   not null
   check (value ~* '^(\*|((resource|organization|folder):.+))$');
 
+-- @Deprecated
 -- abstract_resource_type : "organization:XXX"|"folder:XXX"|"resource:XXX"
 create type lib_iam.resource_type__id as (resource_type varchar(64), resource__id uuid);
+
+create type lib_iam.resource_type__name as (resource_type varchar(64), resource_name lib_iam.nullable_identifier);
 
 create table lib_iam.organization
 (
@@ -51,14 +54,15 @@ create table lib_iam.resource
 );
 
 create index resource_t_type_index on lib_iam.resource (service__id, type__id);
+create index resource_t_name on lib_iam.resource (name);
 
 ------------------------- API -------------------------
 
 -- parse a fully qualified resource (e.g. "[resource|organization|folder]:[UUID|*]") and yield a resource_id (e.g. "(resource_type, resource__id)")
-create or replace function lib_iam._parse_resource(resource$ lib_iam.resource_name) returns lib_iam.resource_type__id as $$
+create or replace function lib_iam._parse_resource(resource$ lib_iam.resource_name) returns lib_iam.resource_type__name as $$
 declare
   resources$ text[];
-  result     lib_iam.resource_type__id;
+  result     lib_iam.resource_type__name;
 begin
 
   if resource$ = '*' then
@@ -73,7 +77,7 @@ begin
   end if;
 
   result.resource_type = resources$[1]::text;
-  result.resource__id = resources$[2]::uuid;
+  result.resource_name = resources$[2]::lib_iam.identifier;
   return result;
 end;
 $$ immutable language plpgsql;

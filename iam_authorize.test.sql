@@ -73,13 +73,13 @@ begin
                                 'folder:00000000-0000-0000-0000-0000000000b1', true);
     perform lib_test.assert_equal(access$, false);
     access$ = lib_iam.authorize('test_manager2:log:get', 'user:00000000-0000-0000-0000-0000000000e1',
-                                'resource:00000000-0000-0000-0000-0000000000c4', true);
+                                'resource:resource-3', true);
     perform lib_test.assert_equal(access$, false);
-    access$ = lib_iam.authorize('test_manager2:log:get', 'allUser', 'resource:00000000-0000-0000-0000-0000000000c4',
+    access$ = lib_iam.authorize('test_manager2:log:get', 'allUsers', 'resource:resource-3',
                                 true);
     perform lib_test.assert_equal(access$, false);
     access$ = lib_iam.authorize('test_manager:invoice:get', 'user:00000000-0000-0000-0000-0000000000e1',
-                                'resource:00000000-0000-0000-0000-0000000000c4', true);
+                                'resource:resource-3', true);
     perform lib_test.assert_equal(access$, false);
 end;
 $$ language plpgsql;
@@ -119,13 +119,13 @@ begin
 
     -- Test resource access by root organization permissions.
     access$ = lib_iam.authorize('test_manager2:log:get', 'user:00000000-0000-0000-0000-0000000000e2',
-                                'resource:00000000-0000-0000-0000-0000000000c4', true);
+                                'resource:resource-3', true);
     perform lib_test.assert_equal(access$, true);
     access$ = lib_iam.authorize('test_manager2:log:get', 'user:00000000-0000-0000-0000-0000000000e2',
-                                'resource:00000000-0000-0000-0000-0000000000c3', true);
+                                'resource:resource-2', true);
     perform lib_test.assert_equal(access$, true);
     access$ = lib_iam.authorize('test_manager2:log:get', 'service_account:00000000-0000-0000-0000-0000000000f1',
-                                'resource:00000000-0000-0000-0000-0000000000c3', true);
+                                'resource:resource-2', true);
     perform lib_test.assert_equal(access$, true);
 
     access$ =
@@ -161,7 +161,7 @@ begin
             lib_iam.folder_create('test-folder-L5', 'my folder level 5', last_created_folder__id$, null);
     resource__id$ = lib_iam.resource_create('test-resource-12', last_created_folder__id$, 'billing_manager', 'invoice');
 
-    found_organization__id$ = lib_iam._find_parent_organizations_by_resource(resource__id$);
+    found_organization__id$ = lib_iam._find_parent_organizations_by_resource('test-resource-12'::lib_iam.identifier);
     perform lib_test.assert_equal(found_organization__id$, organization__id$);
 end;
 $$ language plpgsql;
@@ -191,8 +191,8 @@ begin
                                                     'user:' || editor_user__id$);
 
     resource__id$ =
-            lib_iam.resource_create('invoice-' || invoice__id$, folder__id$, 'test_manager',
-                                    'invoice', invoice__id$);
+            lib_iam.resource_create(invoice__id$::lib_iam.identifier, folder__id$, 'test_manager',
+                                    'invoice');
 
     perform lib_test.assert_equal(
             lib_iam.authorize('test_manager:invoice:create'::lib_iam.permission_name,

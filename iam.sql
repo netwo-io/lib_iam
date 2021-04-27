@@ -1,12 +1,16 @@
 drop domain if exists lib_iam.identifier;
 create domain lib_iam.identifier as varchar(63)
   not null
-  check (value ~* '^(([a-z]|[a-z][a-z0-9\-_]*[a-z0-9])){3,63}$');
+  check (value ~* '^(([a-z]|[a-z]*[a-z0-9\-_]*[a-z0-9])){3,63}$');
+
+drop domain if exists lib_iam.nullable_identifier;
+create domain lib_iam.nullable_identifier as varchar(63)
+    check (value ~* '^(([a-z]|[a-z]*[a-z0-9\-_]*[a-z0-9])){3,63}$');
 
 drop domain if exists lib_iam.wildcardable_identifier;
 create domain lib_iam.wildcardable_identifier as varchar(63)
   not null
-  check (value ~* '^(\*|([a-z]|[a-z][a-z0-9\-_]*[a-z0-9]){3,63})$');
+  check (value ~* '^(\*|([a-z]|[a-z]*[a-z0-9\-_]*[a-z0-9]){3,63})$');
 
 drop domain if exists lib_iam.description;
 create domain lib_iam.description as text

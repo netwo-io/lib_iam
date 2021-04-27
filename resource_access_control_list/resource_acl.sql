@@ -75,21 +75,21 @@ begin
         raise 'not_implemented' using hint = 'Resources ACL do not support wildcard permissions';
     end if;
 
-    select * from lib_iam.resource where resource__id = resource__id$ into resource$;
+    select * from lib_iam.resource where name = resource__id$::lib_iam.identifier into resource$;
     if not found then
         raise 'unknown_resource' using hint = resource__id$;
     end if;
 
     -- i must have set_acl permission on the resource type
     if not lib_iam.rbac_authorize((resource$.service__id, resource$.type__id, 'set_acl'), principal$,
-                                  ('resource', resource$.resource__id)) then
+                                  ('resource', resource$.name)) then
         raise sqlstate '42501' using message = 'insufficient permissions', hint =
                 (resource$.service__id || ':' || resource$.type__id || ':set_acl');
     end if;
 
     -- I must have the permission i am trying to grant
     if not lib_iam.rbac_authorize((resource$.service__id, resource$.type__id, grant_verb$), principal$,
-                                   ('resource', resource$.resource__id)) then
+                                   ('resource', resource$.name)) then
         raise sqlstate '42501' using message = 'insufficient permissions', hint =
                 (resource$.service__id || ':' || resource$.type__id || grant_verb$);
     end if;
@@ -130,13 +130,13 @@ $$
 declare
     resource$ lib_iam.resource;
 begin
-    select * from lib_iam.resource where resource__id = resource__id$ into resource$;
+    select * from lib_iam.resource where name = resource__id$::lib_iam.identifier into resource$;
     if not found then
         raise 'unknown_resource' using hint = resource__id$;
     end if;
 
     if not lib_iam.rbac_authorize((resource$.service__id, resource$.type__id, 'set_acl'), principal$,
-                                  ('resource', resource__id$)) then
+                                  ('resource', resource__id$::lib_iam.nullable_identifier)) then
         raise sqlstate '42501' using message = 'insufficient permissions', hint =
                 (resource$.service__id || ':' || resource$.type__id || ':set_acl');
     end if;
