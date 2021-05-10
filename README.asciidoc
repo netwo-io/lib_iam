@@ -121,6 +121,145 @@ Permissions often correspond one-to-one with REST API methods. That is, each of 
 
 You don't grant permissions to users directly. Instead, you identify <<roles,role>> that contain the appropriate permissions, and then grant those roles to the <<user,user>>. For a list of all available permissions query the `lib_iam.permissions` view. For a list of all roles and their corresponding permissions query the `lib_iam.roles` view.
 
+==== Conventions
+
+A permission name is often a tuple of `{service}.{resource_type}.{verb}`.
+Some conventions do not include the `{service}` part but we think it's better to namespace your `resource_type` by services instead of prefixing `resource_type` directly.
+
+==== Examples of {service} names
+
+- billing
+- chat
+- file
+- iam
+- logging
+- monitoring
+
+==== Examples of {resource_type} names
+
+Note that resource_type is very often plural and camelCase:
+
+- applications
+- accounts
+- agents
+- apis
+- assets
+- attachments
+- backups
+- billingPlans
+- brands
+- buckets
+- conversations
+- credits
+- databases
+- devices
+- documents
+- events
+- folders
+- images
+- licenses
+- participants
+- queues
+- quotas
+- settings
+- sites
+- users
+
+==== Examples of {verb} names
+
+- * (is special verb, even in `lib_iam`, that let specify wildcard permission in the form of `service.resource_type.*`)
+- abort
+- access
+- actAs
+- add
+- attach
+- bind
+- calculate
+- call
+- cancel
+- check
+- cloneRules
+- close
+- connect
+- consume
+- create
+- delete
+- deploy
+- destroy
+- detachSubscription
+- disable
+- download
+- drop
+- enable
+- escalate
+- execute
+- explain
+- export
+- failover
+- get
+- group
+- import
+- ingest
+- install
+- instantiate
+- instantiateInline
+- invoke
+- list
+- listActive
+- listAll
+- login
+- lookup
+- manage
+- mirror
+- move
+- patch
+- pause
+- publish
+- purge
+- quota
+- read
+- reopen
+- report
+- reportStatus
+- reset
+- resetpassword
+- resize
+- resolve
+- restart
+- restore
+- resume
+- review
+- run
+- runDiscovery
+- runtime
+- sampleRowKeys
+- search
+- seek
+- select
+- sendCommand
+- sendVerificationCode
+- set
+- setMetadata
+- setState
+- setTags
+- start
+- stop
+- subscribe
+- truncateLog
+- undelete
+- undeploy
+- uninstall
+- update
+- use
+- validate
+- validateTrust
+- verify
+- view
+- wait
+- watch
+- write
+
+
 [roles]
 === Roles
 A role is a collection of <<permissions,permissions>>. You cannot grant a permission to the <<user,user>> directly. Instead, you grant them a role. When you grant a role to a user, you grant them all the permissions that the role contains.
@@ -135,6 +274,94 @@ And then let your own application users define:
 
 * *Custom roles*: Roles that your own <<user,user>> can create to tailor <<permissions,permissions>> to the needs of their organization when predefined roles don't meet their needs.
 
+==== Conventions
+
+A role name is often a tuple of `{service}.{role}`.
+Some conventions do not include the `{service}` part but we think it's better to namespace your `role` by services instead of prefixing `role` directly.
+Following this convention, *Basic Roles* are namespaced by `{service}`.
+
+
+==== Examples of {role} full names (`{service}.{role}` format)
+
+- accessapproval.approver
+- accessapproval.viewer
+- actions.Admin
+- actions.Viewer
+- apigateway.admin
+- apigateway.viewer
+- chat.owner
+- chat.reader
+- file.editor
+- file.serviceAgent
+- file.viewer
+- iam.organizationRoleAdmin
+- iam.organizationRoleViewer
+- iam.roleAdmin
+- iam.roleViewer
+- iam.securityAdmin
+- iam.securityReviewer
+- iam.serviceAccountAdmin
+- iam.serviceAccountCreator
+- iam.serviceAccountDeleter
+- iam.serviceAccountKeyAdmin
+- iam.serviceAccountTokenCreator
+- iam.serviceAccountUser
+- logging.admin
+- logging.bucketWriter
+- logging.configWriter
+- logging.logWriter
+- logging.serviceAgent
+- logging.viewAccessor
+- logging.viewer
+- monitoring.admin
+- monitoring.alertPolicyEditor
+- monitoring.alertPolicyViewer
+- monitoring.dashboardEditor
+- monitoring.dashboardViewer
+- monitoring.editor
+- monitoring.metricWriter
+- monitoring.notificationChannelEditor
+- monitoring.notificationChannelViewer
+- monitoring.notificationServiceAgent
+- monitoring.servicesEditor
+- monitoring.servicesViewer
+- monitoring.uptimeCheckConfigEditor
+- monitoring.uptimeCheckConfigViewer
+- monitoring.viewer
+
+==== Examples of {role} names (`{role}` format without `{service}.` prefix)
+
+- approver
+- auditor
+- builder
+- connector
+- consumer
+- creator
+- deployer
+- developer
+- editor
+- enqueuer
+- importer
+- inframanager
+- invoker
+- manager
+- migrator
+- operator
+- owner
+- peer
+- predictor
+- provisioner
+- publisher
+- reader
+- reporter
+- runner
+- signer
+- subscriber
+- tester
+- user
+- viewer
+- worker
+- writer
 
 [policy]
 === Policy
