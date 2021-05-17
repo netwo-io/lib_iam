@@ -8,7 +8,6 @@ IAM lets you grant granular access to specific resources and helps prevent acces
 
 toc::[]
 
-
 == Features
 
 Implemented:
@@ -22,9 +21,20 @@ Not implemented "would be nice to have":
 * Folder/Organization level ACLs
 * Restrictive ACLs
 
+== Why put authorizations at the database level?
+
+* No need to fully open the database to the API service, structurally higher security approach
+* Unlike the API service framework approach "allow-all (full database access from the API service) then disallow through rules at the service level". The database level authorizations has a firewall approach (the best known approach to authz), where everything is locked by the database unless rules (row level security) are defined to open read/write access.
+* Even if the higher layers are compromised (e.g. at the api service level), the data consistency and isolation stay safe as long as there are no security flaw at the database level.
+
 
 [how-iam-works]
 == How IAM works
+
+[#img-sunset]
+.Entities inside an Identity and Access Management
+[link=https://www.flickr.com/photos/javh/5448336655]
+image::docs/IAM.svg[Sunset]
 
 
 With IAM, you manage access control by defining *who* (identity) has what *access* (role) for *which resource*. For example, if your project is a chat application, the IAM will manage access to channels, messages, comments, files, and your application resources. The <<organizations,organizations>>, <<folders,folders>> that you use to organize your <<resource,resource>> are also resources.
@@ -49,6 +59,7 @@ In IAM, permission to access a resource isn't granted directly to the end user. 
 // DiagramBlock <|-- PlantUmlBlock
 // ....
 // endif:[]
+
 
 image::docs/iam-overview-basics.svg[Source: Google Cloud IAM documentation]
 
@@ -419,5 +430,8 @@ See unit tests in *.test.sql files. They provide clear example of API usages.
 == SQL Conventions
 ~~~~~~~~~~~~~~~
 
-
 Code is written https://github.com/fgribreau/sql-convention/[following standard SQL-convention].
+
+== Alternatives
+
+- https://www.cloud-iam.com[Cloud-IAM - Managed Keycloak clusters]
