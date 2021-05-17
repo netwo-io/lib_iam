@@ -21,6 +21,7 @@ Not implemented "would be nice to have":
 * Folder/Organization level ACLs
 * Restrictive ACLs
 
+[why-pot-authorizations-at-the-database-level]
 == Why put authorizations at the database level?
 
 * No need to fully open the database to the API service, structurally higher security approach
@@ -33,7 +34,7 @@ Not implemented "would be nice to have":
 
 [#img-sunset]
 .Entities inside an Identity and Access Management
-[link=https://www.flickr.com/photos/javh/5448336655]
+[link=docs/IAM.svg]
 image::docs/IAM.svg[Sunset]
 
 
