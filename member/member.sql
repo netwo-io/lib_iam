@@ -115,7 +115,8 @@ begin
     json_build_object(
       'role', 'webuser',
       'sub', member__id$,
-      'exp', extract(epoch from now())::integer + lifetime$
+      'exp', extract(epoch from now())::integer + lifetime$,
+      'permissions', array_to_json(lib_iam.user_get_bindings(member__id$))
     ),
     secret$
   );
@@ -205,7 +206,8 @@ begin
                     'exp', 2147483647, -- max integer
                     'identifier', identifier$,
                     'jti', jti$,
-                    'role', 'webuser'
+                    'role', 'webuser',
+                    'permissions', array_to_json(lib_iam.user_get_bindings(member__id$))
                 ),
             lib_settings.get('jwt_secret')
         );
@@ -290,5 +292,47 @@ begin
 
   update lib_iam.user set user_secret = null where member__id = usr$.member__id;
   return usr$.member__id;
+end;
+$$ security definer language plpgsql;
+
+-- get all bindings for all orgs for a given member_id formatted as an array with bindings like org.service.role
+create or replace function lib_iam.user_get_bindings(member__id$ uuid) returns text[] as
+$$
+declare
+    organization_id$   uuid;
+    organization_name$ varchar;
+    user_org_bindings$ text[];
+begin
+    -- for each organization for which the member has at least one binding
+    for organization_id$, organization_name$ in select o.organization__id, o.name
+                         from lib_iam.organization o
+                         where exists(
+                                       select *
+                                       from lib_iam.organization_policy op
+                                                join lib_iam.bindings b using (policy__id)
+                                       where member in ('user:' || member__id$, 'service_account:' || member__id$)
+                                         and organization__id = o.organization__id
+                                   )
+        loop
+            -- find all bindings for a given user for the current org as well as bindings inherited from parent orgs
+            user_org_bindings$ = user_org_bindings$ || (
+                with recursive suborganizations as (
+                    select parent_organization__id, organization__id, name
+                    from lib_iam.organization
+                    where organization__id = organization_id$
+                    union
+                    select o.parent_organization__id, o.organization__id, o.name
+                    from lib_iam.organization o
+                             inner join suborganizations
+                                        on o.organization__id = suborganizations.parent_organization__id
+                )
+                select array_agg(organization_name$ || '.' || b.service__id || '.' || b.role__id)
+                from suborganizations o
+                         join lib_iam.organization_policy op using (organization__id)
+                         join lib_iam.bindings b using (policy__id)
+                where member in ('user:' || member__id$, 'service_account:' || member__id$)
+            );
+        end loop;
+    return user_org_bindings$;
 end;
 $$ security definer language plpgsql;
