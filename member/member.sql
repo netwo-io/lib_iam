@@ -115,8 +115,7 @@ begin
     json_build_object(
       'role', 'webuser',
       'sub', member__id$,
-      'exp', extract(epoch from now())::integer + lifetime$,
-      'permissions', array_to_json(lib_iam.user_get_bindings(member__id$))
+      'exp', extract(epoch from now())::integer + lifetime$
     ),
     secret$
   );
@@ -206,8 +205,7 @@ begin
                     'exp', 2147483647, -- max integer
                     'identifier', identifier$,
                     'jti', jti$,
-                    'role', 'webuser',
-                    'permissions', array_to_json(lib_iam.user_get_bindings(member__id$))
+                    'role', 'webuser'
                 ),
             lib_settings.get('jwt_secret')
         );
