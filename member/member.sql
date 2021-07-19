@@ -106,7 +106,7 @@ create trigger user_encrypt_pass_trigger
   for each row
   execute procedure lib_iam.encrypt_pass();
 
-create or replace function lib_iam.generate_token(member__id$ uuid, secret$ text, lifetime$ int) returns text as $$
+create or replace function lib_iam.generate_token(member__id$ uuid, principal$ text, secret$ text, lifetime$ int) returns text as $$
 declare
   token text;
 begin
@@ -115,6 +115,7 @@ begin
     json_build_object(
       'role', 'webuser',
       'sub', member__id$,
+      'principal', principal$,
       'exp', extract(epoch from now())::integer + lifetime$
     ),
     secret$
@@ -159,7 +160,7 @@ begin
     raise 'user is restricted' using errcode = 'check_violation';
   end if;
 
-  return lib_iam.generate_token(usr$.member__id, lib_settings.get('jwt_secret'), lib_settings.get('jwt_lifetime')::int);
+  return lib_iam.generate_token(usr$.member__id, 'user', lib_settings.get('jwt_secret'), lib_settings.get('jwt_lifetime')::int);
 end;
 $$ security definer language plpgsql;
 
@@ -178,7 +179,7 @@ begin
     raise 'user is restricted' using errcode = 'check_violation';
   end if;
 
-  return lib_iam.generate_token(usr$.member__id, lib_settings.get('jwt_secret'), lib_settings.get('jwt_lifetime')::int);
+  return lib_iam.generate_token(usr$.member__id, 'user', lib_settings.get('jwt_secret'), lib_settings.get('jwt_lifetime')::int);
 end;
 $$ security definer language plpgsql;
 
@@ -202,6 +203,7 @@ begin
     return lib_pgjwt.sign(
             json_build_object(
                     'sub', member__id$::uuid,
+                    'principal', 'service_account',
                     'exp', 2147483647, -- max integer
                     'identifier', identifier$,
                     'jti', jti$,
@@ -239,6 +241,7 @@ begin
       lib_pgjwt.sign(
         json_build_object(
           'sub', member__id$::uuid,
+          'principal', 'user',
           'exp', extract(epoch from now())::integer + lifetime$,
           'identifier', identifier$
         ),
