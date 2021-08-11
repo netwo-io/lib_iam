@@ -53,7 +53,7 @@ begin
 
     select parent_folder__id from lib_iam.resource where name = resource__id$ into folder__id$;
     if not found then
-        raise sqlstate '42P01' using
+        raise sqlstate '42704' using
             message = 'resource__id not found',
             hint = resource__id$;
     end if;
@@ -84,23 +84,10 @@ begin
 end;
 $$ immutable language plpgsql;
 
--- @deprecated
-create or replace function lib_iam.authorize(permission$ lib_iam.permission_name,
-                                             principal$ lib_iam.principal,
-                                             resource$ lib_iam.resource_name,
-                                             dry_run$ bool default false) returns boolean as
-$$
-begin
-    return lib_iam.authorize(lib_iam._parse_permission(permission$), principal$, lib_iam._parse_resource(resource$),
-                             dry_run$);
-end;
-$$ volatile
-   security definer language plpgsql;
-
 create or replace function lib_iam.authorize(permission$ lib_iam.permission,
                                              principal$ lib_iam.principal,
                                              resource$ lib_iam.resource_type__name,
-                                             dry_run$ bool default false) returns boolean as
+                                             dry_run$ bool) returns boolean as
 $$
 declare
     parsed_principal$   lib_iam.principal_type__id;
@@ -157,3 +144,34 @@ comment on function lib_iam.authorize(lib_iam.permission,lib_iam.principal,lib_i
     is 'Returns a boolean indicating if the principal has the specified permission on the specified resource either via RBAC or resources ACLs. '
     'ACLs are checked first. '
     'When dry_run is false, an iam event is added to log the permission.';
+
+create or replace function lib_iam.authorize(permission$ lib_iam.permission,
+                                             principal$ lib_iam.principal,
+                                             resource$ lib_iam.resource_type__name) returns boolean as
+$$
+declare
+    authorized_by_rbac$ boolean=false;
+    authorized_by_acl$  boolean=false;
+begin
+
+    if resource$.resource_type = 'resource' then
+        authorized_by_acl$ = lib_iam.acl_authorize(permission$, principal$, resource$.resource_name::lib_iam.identifier);
+    end if;
+
+    if not authorized_by_acl$ then
+        authorized_by_rbac$ = lib_iam.rbac_authorize(
+                permission$,
+                principal$,
+                resource$);
+    end if;
+
+
+    return authorized_by_acl$ or authorized_by_rbac$;
+end;
+$$ stable
+   security definer language plpgsql;
+
+comment on function lib_iam.authorize(lib_iam.permission,lib_iam.principal,lib_iam.resource_type__name)
+    is 'Returns a boolean indicating if the principal has the specified permission on the specified resource either via RBAC or resources ACLs. '
+    'ACLs are checked first. ';
+
